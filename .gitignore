@@ -1,6 +1,8 @@
 *\#*
 *spin*
-.Rhistory
+*Rhistory
+*RData
+.Rproj.user
 *.RMD
 \#*
 *.bed*

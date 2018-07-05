@@ -1,5 +1,7 @@
 ---
 title: "Motif DB stats"
+author: "Frank (zhangc518@gmail.com)"
+date: "`r date()`"
 output:
   md_document:
     variant: markdown_github

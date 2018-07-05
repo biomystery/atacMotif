@@ -1,0 +1,62 @@
+---
+title: "README"
+output: 
+  md_document:
+    variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+
+jaspar <- read.table("./db/jaspar2018_vertebrates.txt",skip = 1,stringsAsFactors = F)[,2:3] #579
+tfclass <- readRDS("./db/tfclass.rds") 
+dic<- readRDS("./db/dic_jaspar_tfclass.rds")
+```
+
+# jasper stats 
+
+```{r}
+# number of TF motifs in Jaspar 
+nrow(jaspar) #579 TF motifs 
+# How many of them are protein complex? 
+length(grep(":",jaspar$V3)) #45 complex 
+```
+
+# tfclass stats 
+
+TFclass database were parsed and extacted the human and mouse genes. 
+
+```{r}
+# How many unique genus (i.e. TF genes) in parsed TFClass?
+length(unique(tfclass$merge$genus.id)) 
+
+# How many subfamilies in parsed TFClass?
+length(unique(tfclass$merge$subfamily.id))
+
+# How many families in parsed TFClass?
+length(unique(tfclass$merge$family.id))
+
+```
+
+# jaspar-tfclass dictionary stats 
+
+```{r}
+# how many Jasper motif have annotation? 
+a=nrow(dic$jasparTOtfclass %>% 
+  dplyr::select(jaspar.id,genus.id) %>% 
+  #distinct(jaspar.id,.keep_all = F)
+  group_by(jaspar.id)%>%
+  summarise(genus.id.2 = paste0(genus.id,collapse = ';')))
+paste(a,nrow(jaspar),sep = "/")
+
+# which jaspar motif don't have annotation?
+noAnno <- subset(jaspar, V2 %in% setdiff(jaspar$V2,dic$jasparTOtfclass$jaspar.id))
+noAnno.2 <- dic$jasparTOensembl[setdiff(jaspar$V2,dic$jasparTOtfclass$jaspar.id)]
+knitr::kable(data.frame(jaspar.id=noAnno$V2,jaspar.name=noAnno$V3,
+           ensembl.id= noAnno.2[noAnno$V2])%>%
+  rowid_to_column('idx'))
+```
+
+
+

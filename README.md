@@ -48,7 +48,6 @@ jaspar-tfclass dictionary stats
 # how many Jasper motif have annotation? 
 a=nrow(dic$jasparTOtfclass %>% 
   dplyr::select(jaspar.id,genus.id) %>% 
-  #distinct(jaspar.id,.keep_all = F)
   group_by(jaspar.id)%>%
   summarise(genus.id.2 = paste0(genus.id,collapse = ';')))
 paste(a,nrow(jaspar),sep = "/")

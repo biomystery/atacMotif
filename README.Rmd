@@ -1,11 +1,12 @@
 ---
 title: "Motif DB stats"
-output: 
+output:
   md_document:
     variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
+# 
 knitr::opts_chunk$set(echo = TRUE)
 require(tidyverse)
 
@@ -14,7 +15,9 @@ tfclass <- readRDS("./db/tfclass.rds")
 dic<- readRDS("./db/dic_jaspar_tfclass.rds")
 ```
 
-# jasper stats 
+# jaspar stats 
+
+The `JASPAR motifs`  were downloaded from [Jaspar](http://jaspar.genereg.net/downloads/) choosing `JASPAR2018_CORE_vertebrates_non-redundant` in `MEME` format. Then a customized function `getEnsemblFromJaspar` [code](./aux_funs.R) was used to get Ensembl ID from `Japsar id` via `uiportID` from Jaspar's record. 
 
 ```{r}
 # number of TF motifs in Jaspar 
@@ -25,7 +28,7 @@ length(grep(":",jaspar$V3))
 
 # tfclass stats 
 
-TFclass database were parsed and extacted the human and mouse genes. 
+[TFclass database](http://tfclass.bioinf.med.uni-goettingen.de/about.jsf) were downloaded (2018-05-14), [parsed](./scripts/parseTfclassTTL.sh) and [extacted](./scripts/tfclass.R) the human and mouse genes' Ensembl ID. 
 
 ```{r}
 # How many unique genus (i.e. TF genes) in parsed TFClass?
@@ -40,6 +43,8 @@ length(unique(tfclass$merge$family.id))
 ```
 
 # jaspar-tfclass dictionary stats 
+
+`JASPAR` and `TFClass` were majorly [mapped](./cmpDB.R) by matching `Ensembl ID` except `20` TFs by `TF Name` directly. 
 
 ```{r}
 # how many Jasper motif have annotation? 

@@ -122,8 +122,9 @@ $(document).ready(function () {
 </div>
 
 
-<div id="jasper-stats" class="section level1">
-<h1>jasper stats</h1>
+<div id="jaspar-stats" class="section level1">
+<h1>jaspar stats</h1>
+<p>The <code>JASPAR motifs</code> were downloaded from <a href="http://jaspar.genereg.net/downloads/">Jaspar</a> choosing <code>JASPAR2018_CORE_vertebrates_non-redundant</code> in <code>MEME</code> format. Then a customized function <code>getEnsemblFromJaspar</code> <a href="./aux_funs.R">code</a> was used to get Ensembl ID from <code>Japsar id</code> via <code>uiportID</code> from Jaspar’s record.</p>
 <pre class="r"><code># number of TF motifs in Jaspar 
 nrow(jaspar) </code></pre>
 <pre><code>## [1] 579</code></pre>
@@ -133,7 +134,7 @@ length(grep(&quot;:&quot;,jaspar$V3)) </code></pre>
 </div>
 <div id="tfclass-stats" class="section level1">
 <h1>tfclass stats</h1>
-<p>TFclass database were parsed and extacted the human and mouse genes.</p>
+<p><a href="http://tfclass.bioinf.med.uni-goettingen.de/about.jsf">TFclass database</a> were downloaded (2018-05-14), <a href="./scripts/parseTfclassTTL.sh">parsed</a> and <a href="./scripts/tfclass.R">extacted</a> the human and mouse genes’ Ensembl ID.</p>
 <pre class="r"><code># How many unique genus (i.e. TF genes) in parsed TFClass?
 length(unique(tfclass$merge$genus.id)) </code></pre>
 <pre><code>## [1] 1440</code></pre>
@@ -146,6 +147,7 @@ length(unique(tfclass$merge$family.id))</code></pre>
 </div>
 <div id="jaspar-tfclass-dictionary-stats" class="section level1">
 <h1>jaspar-tfclass dictionary stats</h1>
+<p><code>JASPAR</code> and <code>TFClass</code> were majorly <a href="./cmpDB.R">mapped</a> by matching <code>Ensembl ID</code> except <code>20</code> TFs by <code>TF Name</code> directly.</p>
 <pre class="r"><code># how many Jasper motif have annotation? 
 a=nrow(dic$jasparTOtfclass %&gt;% 
   dplyr::select(jaspar.id,genus.id) %&gt;% 

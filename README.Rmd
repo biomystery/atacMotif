@@ -18,9 +18,9 @@ dic<- readRDS("./db/dic_jaspar_tfclass.rds")
 
 ```{r}
 # number of TF motifs in Jaspar 
-nrow(jaspar) #579 TF motifs 
+nrow(jaspar) 
 # How many of them are protein complex? 
-length(grep(":",jaspar$V3)) #45 complex 
+length(grep(":",jaspar$V3)) 
 ```
 
 # tfclass stats 
@@ -54,7 +54,8 @@ paste(a,nrow(jaspar),sep = "/")
 noAnno <- subset(jaspar, V2 %in% setdiff(jaspar$V2,dic$jasparTOtfclass$jaspar.id))
 noAnno.2 <- dic$jasparTOensembl[setdiff(jaspar$V2,dic$jasparTOtfclass$jaspar.id)]
 knitr::kable(data.frame(jaspar.id=noAnno$V2,jaspar.name=noAnno$V3,
-           ensembl.id= noAnno.2[noAnno$V2])%>%
+           ensembl.id= noAnno.2[noAnno$V2],
+           url= paste0("http://jaspar2018.genereg.net/matrix/",noAnno$V2))%>%
   rowid_to_column('idx'))
 ```
 

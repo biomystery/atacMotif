@@ -1,0 +1,52 @@
+
+source("./aux_funs.R")
+
+jaspar <- read.table("./db/jaspar2018_vertebrates.txt",skip = 1,stringsAsFactors = F)[,2:3] #579
+tfclass <- readRDS("./db/tfclass.rds") 
+dic<- readRDS("./db/dic_jaspar_tfclass.rds")
+
+
+# update dic 1---------------------------------------------------------
+
+# jaspa dic 
+jasparTOensembl <- setdiff(jaspar$V2,names(dic$jasparTOensembl))# 138
+names(jasparTOensembl) <- jasparTOensembl
+
+for(i in 1:length(jasparTOensembl)) {
+  print(i);
+  jasparTOensembl[i]=getEnsemblFromJaspar(jasparTOensembl[i])}
+
+# tfclass dic 
+ensemblTOsubfamily <- tfclass$merge%>%
+  separate_rows(tf.id,sep = ";") %>%
+  distinct(tf.id,.keep_all = T)%>%
+  column_to_rownames("tf.id")
+
+# jaspa to tfclass 
+jasparTOtfclass <-data.frame(ensembl.id = jasparTOensembl)%>%
+  rownames_to_column("jaspar.id")%>%
+  separate_rows(ensembl.id,sep = ";") %>%
+  right_join(ensemblTOsubfamily%>%rownames_to_column("ensembl.id"))%>%
+  filter(!is.na(jaspar.id))
+  
+
+# added 
+dic$jasparTOensembl <- c(dic$jasparTOensembl,jasparTOensembl)
+dic$ensemblTOtfclass  <- rbind(dic$ensemblTOtfclass,ensemblTOsubfamily)
+dic$jasparTOtfclass <- rbind(dic$jasparTOtfclass,jasparTOtfclass)
+
+# update dic 2: directly match genus name ---------------------------------------------------------
+noAnno <- subset(jaspar, V2 %in% setdiff(jaspar$V2,dic$jasparTOtfclass$jaspar.id))
+idx <- tolower(noAnno$V3) %in% tolower(tfclass$merge$genus.name) 
+sum(idx) #15 more 
+idx.2 <- tolower(tfclass$merge$genus.name)%in% tolower(noAnno$V3)
+directMatch.2 <-  noAnno[idx,] %>% 
+  mutate(V3=toupper(V3))%>%
+  left_join(tfclass$merge[idx.2,]%>%mutate(genus.name=toupper(genus.name)),by = c("V3" = "genus.name"))%>%
+  rename("V2"="jaspar.id","V3"="genus.name","tf.id"="ensembl.id")%>%
+  separate_rows("ensembl.id") # 32 rows
+  
+dic$jasparTOtfclass <- rbind(dic$jasparTOtfclass,directMatch.2[,colnames(dic$jasparTOtfclass)])
+saveRDS(dic,file = "./db/dic_jaspar_tfclass.rds")
+
+

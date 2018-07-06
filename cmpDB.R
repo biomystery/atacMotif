@@ -47,6 +47,29 @@ directMatch.2 <-  noAnno[idx,] %>%
   separate_rows("ensembl.id") # 32 rows
   
 dic$jasparTOtfclass <- rbind(dic$jasparTOtfclass,directMatch.2[,colnames(dic$jasparTOtfclass)])
+
+
+# Update3: merge all  -----------------------------------------------------
+dim(dic$jasparTOtfclass)
+tmp.2 <- dic$jasparTOtfclass%>%
+  group_by(jaspar.id)%>%
+  summarise_all(funs(paste(unique(.),collapse = ";")))
+
+tmp<-rename(jaspar,jaspar.id=V2,jaspar.name=V3) %>% 
+  full_join(dic$jasparTOtfclass)
+length(unique(jaspar$V2)) #579
+length(unique(tmp$jaspar.id)) #579
+
+tmp.1<- tmp %>% full_join(tfclass$merge%>%
+               rename(ensembl.id=tf.id))%>%
+  separate_rows(ensembl.id)
+dim(tmp.1) #2099,11; 3389,11
+length(unique(tmp.1$jaspar.id)) #580 (add NA)
+length(unique(tfclass$merge$subfamily.id)) #396
+length(unique(tmp.1$subfamily.id)) #397
+
+dic$merged <- tmp.1%>%
+
 saveRDS(dic,file = "./db/dic_jaspar_tfclass.rds")
 
 

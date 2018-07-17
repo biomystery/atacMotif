@@ -4,9 +4,10 @@ author: "Frank (zhangc518@gmail.com)"
 date: "`r date()`"
 always_allow_html: yes
 output:
-   md_document:
-    variant: 
-      markdown_github
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
@@ -23,11 +24,14 @@ dic<- readRDS("./db/dic_jaspar_tfclass.rds")
 
 The `JASPAR motifs`  were downloaded from [Jaspar](http://jaspar.genereg.net/downloads/) choosing `JASPAR2018_CORE_vertebrates_non-redundant` in `MEME` format. Because there is no gene ids provided in the Jaspar database, the corresponding gene's `Ensembl ID` was fatched by querying the provided `UniprotID` from [UniprotID](https://www.uniprot.org/uniprot/) using a customized function `getEnsemblFromJaspar` [code](./aux_funs.R). 
 
-* number of TF motifs in Jaspar 
+## How many TF motifs in Jaspar?
+
 ```{r}
 nrow(jaspar) 
 ```
-* How many of them are protein complex? 
+
+## How many of them are protein complex? 
+
 ```{r}
 length(grep(":",jaspar$V3)) 
 ```
@@ -36,19 +40,22 @@ length(grep(":",jaspar$V3))
 
 [TFclass database](http://tfclass.bioinf.med.uni-goettingen.de/about.jsf) were downloaded (2018-05-14), [parsed](./scripts/parseTfclassTTL.sh) and [extacted](./scripts/tfclass.R) the human and mouse genes' Ensembl ID. 
 
-* How many unique genus (i.e. TF genes) in parsed TFClass?
+## How many unique genus ids (i.e. TF genes) in parsed TFClass?
 ```{r}
 length(unique(tfclass$merge$genus.id)) 
 ```
-* How many subfamilies in parsed TFClass?
+
+## How many subfamilies in parsed TFClass?
 ```{r}
 length(unique(tfclass$merge$subfamily.id))
 ```
-* How many families in parsed TFClass?
+
+## How many families in parsed TFClass?
 ```{r}
 length(unique(tfclass$merge$family.id))
 ```
-* There are two tfs have no family info in TFClass db:
+
+## There are two tfs have no family info in TFClass db:
 ```{r}
 knitr::kable(tfclass$merge %>% filter(subfamily.id==""))
 ```
@@ -76,7 +83,10 @@ knitr::kable(data.frame(jaspar.id=noAnno$V2,jaspar.name=noAnno$V3,
   rowid_to_column('idx'))
 ```
 
-## For TFclass, how many Jaspar Motifs found for each subfamily?
+## Family and Jaspar
+
+## Subfamily and Jaspar
+### For TFclass, how many Jaspar Motifs found for each subfamily?
 ```{r,echo=F,warning=F,message=F}
 stats.jaspar<-dic$merged%>%
   group_by(subfamily.id)%>%
@@ -89,7 +99,7 @@ cnt <- count(stats.jaspar[-nrow(stats.jaspar),],n.jaspar)%>%
 knitr::kable(cnt)
 ```
 
-## Which are those 178 subfamily have no jaspar motif?
+### Which are those 178 subfamily have no jaspar motif?
 ```{r,echo=F,warning=F,message=F}
 DT::datatable(dic$merged%>% 
                 filter(subfamily.id %in% stats.jaspar$subfamily.id[stats.jaspar$n.jaspar==0])%>%
@@ -100,7 +110,7 @@ DT::datatable(dic$merged%>%
                 arrange(subfamily.id))
 ```
 
-## Which are other subfamilies that found at least once in Jaspar?
+### Which are other subfamilies that found at least once in Jaspar?
 ```{r,echo=F,warning=F,message=F}
 DT::datatable(
   stats.jaspar[stats.jaspar$n.jaspar>0,]%>% 

@@ -14,6 +14,8 @@ output:
 
 knitr::opts_chunk$set(echo = FALSE)
 require(tidyverse)
+require(knitr)
+require(kableExtra)
 
 jaspar <- read.table("./db/jaspar2018_vertebrates.txt",skip = 1,stringsAsFactors = F)[,2:3] #579
 tfclass <- readRDS("./db/tfclass.rds") 
@@ -24,70 +26,64 @@ dic<- readRDS("./db/dic_jaspar_tfclass.rds")
 
 The `JASPAR motifs`  were downloaded from [Jaspar](http://jaspar.genereg.net/downloads/) choosing `JASPAR2018_CORE_vertebrates_non-redundant` in `MEME` format. Because there is no gene ids provided in the Jaspar database, the corresponding gene's `Ensembl ID` was fatched by querying the provided `UniprotID` from [UniprotID](https://www.uniprot.org/uniprot/) using a customized function `getEnsemblFromJaspar` [code](./aux_funs.R). 
 
-## How many TF motifs in Jaspar?
-
+The numbers are shown:
 ```{r}
-nrow(jaspar) 
-```
-
-## How many of them are protein complex? 
-
-```{r}
-length(grep(":",jaspar$V3)) 
+kable(data.frame(
+  n.jaspar=nrow(jaspar),
+  n.complex=length(grep(":",jaspar$V3))))%>%
+  kable_styling(c("striped", "bordered"),full_width = F)
 ```
 
 # tfclass stats 
 
 [TFclass database](http://tfclass.bioinf.med.uni-goettingen.de/about.jsf) were downloaded (2018-05-14), [parsed](./scripts/parseTfclassTTL.sh) and [extacted](./scripts/tfclass.R) the human and mouse genes' Ensembl ID. 
 
-## How many unique genus ids (i.e. TF genes) in parsed TFClass?
+The number of each categories are shown: 
+
 ```{r}
-length(unique(tfclass$merge$genus.id)) 
+kable(
+  data.frame(n.genus=length(unique(tfclass$merge$genus.id)),
+              n.subfamily=length(unique(tfclass$merge$subfamily.id)),
+              n.family=length(unique(tfclass$merge$family.id))-1,
+              n.class=length(unique(sub("\\.[0-9]+$","",unique(tfclass$merge$family.id)))),
+              n.superclass=length(unique(sub("\\.[0-9]+\\.[0-9]+$","",unique(tfclass$merge$family.id))))-1))%>%
+  kable_styling(c("striped", "bordered"),full_width = F) 
+                         
 ```
 
-## How many subfamilies in parsed TFClass?
-```{r}
-length(unique(tfclass$merge$subfamily.id))
-```
 
-## How many families in parsed TFClass?
-```{r}
-length(unique(tfclass$merge$family.id))
-```
+There are two tfs have no family info in TFClass db:
 
-## There are two tfs have no family info in TFClass db:
 ```{r}
-knitr::kable(tfclass$merge %>% filter(subfamily.id==""))
+knitr::kable((tfclass$merge %>%
+               filter(subfamily.id==""))[,3:4])%>%
+  kable_styling(c("striped", "bordered"),full_width = F) 
 ```
 
 # jaspar-tfclass dictionary stats 
 
 `JASPAR` and `TFClass` were majorly [mapped](./cmpDB.R) by matching `Ensembl ID` except `20` TFs by `TF Name` directly. 
 
-## how many Jaspar motif have annotation? 
-```{r}
-a=nrow(dic$jasparTOtfclass %>% 
-  dplyr::select(jaspar.id,genus.id) %>% 
-  group_by(jaspar.id)%>%
-  summarise(genus.id.2 = paste0(genus.id,collapse = ';')))
-paste(a,nrow(jaspar),sep = "/")
-```
+There are **`r paste(nrow(dic$jasparTOtfclass %>% dplyr::select(jaspar.id,genus.id) %>%   group_by(jaspar.id)%>%summarise(genus.id.2 = paste0(genus.id,collapse = ';'))),nrow(jaspar),sep = "/")`** jaspar motifs have annotation in TFclass.
 
-## which jaspar motif don't have annotation?
+The jaspar motif that doesn't have annotation are shown:
+
 ```{r}
 noAnno <- subset(jaspar, V2 %in% setdiff(jaspar$V2,dic$jasparTOtfclass$jaspar.id))
 noAnno.2 <- dic$jasparTOensembl[setdiff(jaspar$V2,dic$jasparTOtfclass$jaspar.id)]
 knitr::kable(data.frame(jaspar.id=noAnno$V2,jaspar.name=noAnno$V3,
            ensembl.id= noAnno.2[noAnno$V2],
            url= paste0("http://jaspar2018.genereg.net/matrix/",noAnno$V2))%>%
-  rowid_to_column('idx'))
+  rowid_to_column('idx'))%>%
+  kable_styling(c("striped", "bordered"),full_width = F) 
 ```
 
-## Family and Jaspar
+## Subfamily coverage
 
-## Subfamily and Jaspar
-### For TFclass, how many Jaspar Motifs found for each subfamily?
+For TFclass, the number of jaspar motifs found for each subfamily ranged from 0 to 27. The detailed distribution is shown: 
+
 ```{r,echo=F,warning=F,message=F}
+require(highcharter)
 stats.jaspar<-dic$merged%>%
   group_by(subfamily.id)%>%
   summarise(n.jaspar=length(unique(jaspar.id[!is.na(jaspar.id)])))%>%
@@ -96,21 +92,60 @@ stats.jaspar<-dic$merged%>%
 stats.jaspar<- stats.jaspar[-1,]
 cnt <- count(stats.jaspar[-nrow(stats.jaspar),],n.jaspar)%>%
   rename(n.tf.subfamilty=n)
-knitr::kable(cnt)
+
+highchart() %>% 
+  hc_chart(type = "column") %>% 
+  hc_xAxis(categories=cnt$n.jaspar,
+           title=list(text="n.jaspar"))%>%
+  hc_yAxis(title=list(text="n.tf.subfamily"))%>%
+  hc_add_series(data = cnt$n.tf.subfamilty)
 ```
 
-### Which are those 178 subfamily have no jaspar motif?
+There are 178 subfamilies have no jaspar motif:
+
 ```{r,echo=F,warning=F,message=F}
-DT::datatable(dic$merged%>% 
+sf.noJaspar<-dic$merged%>% 
                 filter(subfamily.id %in% stats.jaspar$subfamily.id[stats.jaspar$n.jaspar==0])%>%
                 dplyr::select(-starts_with("jaspar"))%>%
                 dplyr::select(-starts_with("ensem"))%>%
                 group_by(subfamily.id)%>%
                 summarise_all(funs(paste(unique(.),collapse = ";")))%>%
-                arrange(subfamily.id))
+                arrange(subfamily.id)
+DT::datatable(sf.noJaspar)
 ```
 
-### Which are other subfamilies that found at least once in Jaspar?
+---
+However, of these 178 subfamilies: 
+
+```{r}
+ids <- data.frame(undefined.sf=grepl("^0\\.",sf.noJaspar$subfamily.id),
+           zinc_finger_more_than_3=grepl("^2\\.3\\.3\\.",sf.noJaspar$subfamily.id),
+           dispersed_zinc_finger=grepl("^2\\.3\\.4\\.",sf.noJaspar$subfamily.id),
+           skiped_sf=grepl("^[0-9]+\\.[0-9]+\\.[0-9]+\\.0$",sf.noJaspar$subfamily.id))%>%
+  mutate(remain= !(undefined.sf|zinc_finger_more_than_3|dispersed_zinc_finger|skiped_sf))
+ann<- c("0.x.x.x","2.3.3.x","2.3.4.x","x.x.x.0","rest")
+cnt.2 <- data.frame(N=sapply(ids, sum),
+                 id_type=ann)
+kable(cnt.2)%>%
+  kable_styling(c("striped", "bordered"),full_width = F) 
+```
+
+So in the end, there are **`r paste(cnt.2$N[5],sum(cnt$n.tf.subfamilty)-sum(cnt.2$N[-5]),sep="/")`** TFclass subfamily that doesn't contain a Jaspar motif. Below is the updated counts stats:
+
+```{r}
+cnt$n.tf.subfamilty[1]<-cnt.2$N[5]
+highchart() %>% 
+  hc_chart(type = "column") %>% 
+  hc_xAxis(categories=cnt$n.jaspar,
+           title=list(text="n.jaspar"))%>%
+  hc_yAxis(title=list(text="n.tf.subfamily"))%>%
+  hc_add_series(data = cnt$n.tf.subfamilty)
+
+```
+
+
+The jaspar and tfclass match can be searched here: 
+
 ```{r,echo=F,warning=F,message=F}
 DT::datatable(
   stats.jaspar[stats.jaspar$n.jaspar>0,]%>% 
@@ -124,5 +159,28 @@ DT::datatable(
     drop_na())
 ```
 
+## Family coverage
 
 
+```{r}
+stats.jaspar<-dic$merged%>%
+  group_by(family.id)%>%
+  summarise(n.jaspar=length(unique(jaspar.id[!is.na(jaspar.id)])))%>%
+  complete(family.id,fill = list(n.jaspar=0))%>%
+  arrange(as.character(family.id))
+stats.jaspar<- stats.jaspar[-1,]
+stats.jaspar<-stats.jaspar%>% filter(!(grepl("^0\\.",family.id)|
+                            family.id=="2.3.3" |
+                           family.id=="2.3.4"))
+cnt <- count(stats.jaspar[-nrow(stats.jaspar),],n.jaspar)%>%
+  rename(n.tf.family=n)
+
+highchart() %>% 
+  hc_chart(type = "column") %>% 
+  hc_xAxis(categories=cnt$n.jaspar,
+           title=list(text="n.jaspar"))%>%
+  hc_yAxis(title=list(text="n.tf.family"))%>%
+  hc_add_series(data = cnt$n.tf.family)
+```
+
+There are **`r sum(cnt$n.tf.family)-cnt$n.tf.family[1]`** out of **`r sum(cnt$n.tf.family)`** have at least one Jaspar motif found. Note: the total number of family here are counted after filtered out those `undefined`, `zinc_finger_more_than_3`, and `dispersed_zinc_finger`. 

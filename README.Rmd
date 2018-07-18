@@ -12,7 +12,7 @@ output:
 
 ```{r setup, include=FALSE}
 
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE,message = F)
 require(tidyverse)
 require(knitr)
 require(kableExtra)
@@ -172,7 +172,7 @@ stats.jaspar<- stats.jaspar[-1,]
 stats.jaspar<-stats.jaspar%>% filter(!(grepl("^0\\.",family.id)|
                             family.id=="2.3.3" |
                            family.id=="2.3.4"))
-cnt <- count(stats.jaspar[-nrow(stats.jaspar),],n.jaspar)%>%
+cnt <- count(stats.jaspar,n.jaspar)%>%
   rename(n.tf.family=n)
 
 highchart() %>% 
@@ -183,4 +183,20 @@ highchart() %>%
   hc_add_series(data = cnt$n.tf.family)
 ```
 
-There are **`r sum(cnt$n.tf.family)-cnt$n.tf.family[1]`** out of **`r sum(cnt$n.tf.family)`** have at least one Jaspar motif found. Note: the total number of family here are counted after filtered out those `undefined`, `zinc_finger_more_than_3`, and `dispersed_zinc_finger`. 
+There are **`r sum(cnt$n.tf.family)-cnt$n.tf.family[1]`** out of **`r sum(cnt$n.tf.family)`** have at least one Jaspar motif found. Note: the total number of family here are counted after filtered out those `undefined`, `zinc_finger_more_than_3`, and `dispersed_zinc_finger`. There are **`r cnt$n.tf.family[1]`** families that have no Jaspar motif instances: 
+
+```{r}
+DT::datatable(
+  stats.jaspar[stats.jaspar$n.jaspar==0,]%>% 
+    right_join(dic$merged%>% 
+                filter(family.id %in% stats.jaspar$family.id[stats.jaspar$n.jaspar==0])%>%
+                dplyr::select(-starts_with("jaspar"))%>%
+                dplyr::select(-starts_with("ensem"))%>%
+                group_by(family.id)%>%
+                summarise_all(funs(paste(unique(.),collapse = ";"))))%>%
+                arrange(n.jaspar,family.id)%>%
+    drop_na())
+```
+
+
+

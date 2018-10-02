@@ -1,101 +1,215 @@
 
-source("./aux_funs.R")
+source("./bin/aux_funs.R")
 tfclass <- readRDS("./data/tfclass.rds")
 
+
+# input parameters --------------------------------------------------------
+ame_path <- "./test/ame_2kbg_all.res.txt"
+th <- .00001
+
 # ame’s output ------------------------------------------------------------
-zhang_ame <- read.table("./data/ame.all.res.txt",
-                      col.names = c('jaspar.id',"tf.name","tf.seq","padj","clust"),
+ame_res <- read.table(ame_path,
+                      header = T,
                       stringsAsFactors = F)
 
 
-chu_ame <- read.table("./data/chu_ame_res.txt",
-                      col.names = c('jaspar.id',"tf.name","tf.seq","padj","clust"),
-                      stringsAsFactors = F)
+# load jaspar_to_TFclass dic---------------------------------------------------------
 
-#jaspar_to_TFclass dic---------------------------------------------------------
-
-# filter padj <1e-5
-th <- .01
-zhang_ame.anno <- zhang_ame%>% 
-  filter(padj<=th)
+# filter adj_p.value <1e-5
+ame_res.anno <- ame_res%>% 
+  filter(adj_p.value<=th)
 
 # jaspa dic 
-dic.jasparTOensembl <- unique(zhang_ame.anno$jaspar.id)
-names(dic.jasparTOensembl) <- unique(zhang_ame.anno$jaspar.id)
-for(i in 1:length(dic.jasparTOensembl)) {
-  print(i);
-  dic.jasparTOensembl[i]=getEnsemblFromJaspar(dic.jasparTOensembl[i])}
+dic$jasparTOensembl <- unique(ame_res.anno$motif_ID)
+names(dic$jasparTOensembl) <- unique(ame_res.anno$motif_ID)
 
-# tfclass dic 
-dic.ensemblTOsubfamily <- tfclass$merge%>%
-  separate_rows(tf.id,sep = ";") %>%
-  distinct(tf.id,.keep_all = T)%>%
-  column_to_rownames("tf.id")
-
-# jaspa to tfclass 
-dic.jasparTOtfclass <-data.frame(ensembl.id = dic.jasparTOensembl)%>%
-  rownames_to_column("jaspar.id")%>%
-  separate_rows(ensembl.id,sep = ";") %>%
-  right_join(dic.ensemblTOsubfamily%>%rownames_to_column("ensembl.id"))%>%
-  filter(!is.na(jaspar.id))
+if(F){
+  # grab jaspar info from web 
+  for(i in 1:length(dic.jasparTOensembl)) {
+    print(i);
+    dic.jasparTOensembl[i]=getEnsemblFromJaspar(dic.jasparTOensembl[i])}
   
+  # tfclass dic 
+  dic.ensemblTOsubfamily <- tfclass$merge%>%
+    separate_rows(tf.id,sep = ";") %>%
+    distinct(tf.id,.keep_all = T)%>%
+    column_to_rownames("tf.id")
+  
+  # jaspa to tfclass 
+  dic.jasparTOtfclass <-data.frame(ensembl.id = dic.jasparTOensembl)%>%
+    rownames_to_column("motif_ID")%>%
+    separate_rows(ensembl.id,sep = ";") %>%
+    right_join(dic.ensemblTOsubfamily%>%rownames_to_column("ensembl.id"))%>%
+    filter(!is.na(motif_ID))
+  
+  saveRDS(list(jasparTOensembl=dic.jasparTOensembl,
+               ensemblTOtfclass=dic.ensemblTOsubfamily,
+               jasparTOtfclass=dic.jasparTOtfclass),
+          file = "./db/dic_jaspar_tfclass.rds")
+}
 
-saveRDS(list(jasparTOensembl=dic.jasparTOensembl,
-             ensemblTOtfclass=dic.ensemblTOsubfamily,
-             jasparTOtfclass=dic.jasparTOtfclass),
-        file = "./data/dic_jaspar_tfclass.rds")
-dic<- readRDS("./data/dic_jaspar_tfclass.rds")
-attach(dic)
-# heatmap -----------------------------------------------------------------
-tmp <- sapply(unique(zhang_ame[zhang_ame$padj<=th,"jaspar.id"]),function(a)
-  (dic.jasparTOtfclass%>%
-     filter(row_number()==grep(a,dic.jasparTOtfclass$jaspar.id)[1])),simplify = F)
+dic<- readRDS("./db/dic_jaspar_tfclass.rds")
+names(dic)
+
+# add annotation -----------------------------------------------------------------
+
+tmp <- sapply(unique(ame_res[ame_res$adj_p.value<=th,"motif_ID"]),function(a)
+  (dic$jasparTOtfclass%>%
+     filter(row_number()==grep(a,dic$jasparTOtfclass$jaspar.id)[1])),simplify = F)
 tmp<-do.call(rbind,tmp)
 
+# 17 out of 430 are not in the dic. 
+all(unique(ame_res$motif_ID) %in% tmp$jaspar.id)
+sum(!unique(ame_res$motif_ID) %in% tmp$jaspar.id)
+length(unique(ame_res$motif_ID))
+unique(ame_res$motif_ID) [!unique(ame_res$motif_ID) %in% tmp$jaspar.id]
 
-pd.zhang_ame <- zhang_ame%>%
-  filter(padj<=th)%>%
-  mutate(log10.padj=-log10(padj))%>%
-  dplyr::select(-padj)%>%
-  spread(key=clust,value = log10.padj,fill = 0)
-#  semi_join(tmp[pd.zhang_ame$jaspar.id,],copy = T)
-
-pd.zhang_ame<-cbind(pd.zhang_ame,tmp[pd.zhang_ame$jaspar.id,])%>%
+pd.ame_res <- ame_res%>%
+  filter(adj_p.value<=th)
+pd.ame_res<-cbind(pd.ame_res,tmp[pd.ame_res$motif_ID,-1])%>%
   unite(tf,1:3)%>%
-  remove_rownames()%>%
-  column_to_rownames("tf")%>%
   unite(family,family.id,family.name)%>%
-  unite(subfamily,subfamily.id,subfamily.name)
+  unite(subfamily,subfamily.id,subfamily.name)%>%
+  mutate(p.value=-log10(p.value),
+         adj_p.value=-log10(adj_p.value),
+         E.value=-log10(E.value),
+         log2FE = log2((X.TP+0.1)/(X.FP+0.1)))
 
-col.max <- apply(pd.zhang_ame[,grepl("clust",colnames(pd.zhang_ame))],
+
+res.sum <- data.frame(pd.ame_res[,c("sample","FASTA_max")]%>%distinct(),
+                      nmotifs=sapply(unique(pd.ame_res$sample), 
+                                     function(x) nrow(pd.ame_res%>% filter(sample==x))),
+                      nmotifs.FE=sapply(unique(pd.ame_res$sample), 
+                                     function(x) nrow(pd.ame_res%>%
+                                                        filter(log2FE>1)%>%
+                                                        filter(sample==x)))
+                      )
+res.sum%>% mutate(frac=round(nmotifs/FASTA_max,2))
+
+write.table(data.frame(pd.ame_res[,c("sample","FASTA_max")]%>%distinct(),
+                         nmotifs=sapply(unique(pd.ame_res$sample), function(x) nrow(pd.ame_res%>% filter(sample==x)))),
+            file = "n.csv",sep = ',',quote = F,row.names = F)
+
+ggplot(pd.ame_res%>%filter(log2FE>1),aes(sample,tf))+
+  geom_tile(aes(fill=log2FE))+
+  theme(axis.text.y = element_blank())
+  #+scale_fill_gradientn(colours =  wes_palette("Zissou1", 21, type = "continuous"))
+
+
+pd <- pd.ame_res%>%
+  filter(log2FE>1)%>%
+  dplyr::select(sample,tf,log2FE)%>%
+  spread(key=sample,value = log2FE)%>%
+  column_to_rownames("tf")
+
+
+# hcluster
+pd.2 <- pd; pd.2[is.na(pd)]<-0
+require(cluster)
+distfunc <- function(x) daisy(x,metric="gower")
+d <- distfunc(pd.2)
+dend <- as.dendrogram(hclust(d))
+dend <- as.dendrogram(hclust(dist(pd.2)))
+plot(dend)
+pheatmap(pd[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(11),
+         show_rownames = F)
+
+
+# order by column
+rord <- pd %>% 
+  rownames_to_column("tf")%>%
+  arrange(desc(alpha_1),desc(alpha_2),
+          desc(beta_1),desc(beta_2),
+          desc(delta_1),desc(delta_2),
+          desc(endothelial_1),desc(endothelial_2),
+          desc(exocrine),desc(gamma),
+          desc(glial),desc(immune),desc(stellate))
+
+pheatmap(pd[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"GnBu"))(11),
+         show_rownames = F)
+
+# row-wise scale 
+pd.3 <- t(scale(t(pd.2)))
+pd.3[pd.3>1.96] <- 1.96; pd.3[pd.3 < -1.96] <- -1.96
+d <- distfunc(pd.3)
+dend <- as.dendrogram(hclust(d))
+
+pd.3[is.na(pd)]<- NA
+pheatmap(pd.3[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
+         show_rownames = F,color = colorRampPalette(rev(brewer.pal(n = 7, name =
+                                                                     "RdYlBu")))(21))
+
+pd.3[is.na(pd)]<- -1.96
+
+
+## by supfamily 
+pd.sub <- pd.ame_res%>%
+  filter(log2FE>1)%>%
+  dplyr::select(sample,subfamily,log2FE)%>%
+  group_by(sample,subfamily)%>%
+  summarise(mlog2FE=max(log2FE))%>%
+  spread(key=sample,value = mlog2FE)%>%
+  as.data.frame()%>%
+  column_to_rownames("subfamily")
+
+pd.sub <- pd.sub[apply(pd.sub, 1, function(x) sum(is.na(x))<ncol(pd.sub)),]
+pd.sub.2 <- pd.sub;pd.sub.2[is.na(pd.sub.2)] <- 0   
+dend <- as.dendrogram(hclust(dist(pd.sub.2)))
+pheatmap(pd.sub[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"GnBu"))(11),
+         show_rownames = T,fontsize_row = 6)
+
+## by family 
+pd.fa <- pd.ame_res%>%
+  filter(log2FE>1)%>%
+  dplyr::select(sample,family,log2FE)%>%
+  group_by(sample,family)%>%
+  summarise(mlog2FE=max(log2FE))%>%
+  spread(key=sample,value = mlog2FE)%>%
+  as.data.frame()%>%
+  column_to_rownames("family")
+
+pd.fa <- pd.fa[apply(pd.fa, 1, function(x) sum(is.na(x))<ncol(pd.fa)),]
+pd.fa.2 <- pd.fa;pd.fa.2[is.na(pd.fa)] <- 0   
+dend <- as.dendrogram(hclust(dist(pd.fa.2)))
+pheatmap(pd.fa[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"GnBu"))(11),
+         show_rownames = T,fontsize_row = 8)
+# choose a quantity to plot  -------------------------------------------------------------------
+
+
+
+col.max <- apply(pd.ame_res[,grepl("sample",colnames(pd.ame_res))],
                  2,max)
 col.max.col <- cut(col.max,seq(min(col.max)-.01,max(col.max)+.01,length.out = 20))
 col.map <- colorRampPalette(brewer.pal(9,"Blues"))(19)
 names(col.map)<- levels(col.max.col)
 col.map.col <- col.map[col.max.col]
-names(col.map.col) <- colnames(pd.zhang_ame)[grepl("clust",colnames(pd.zhang_ame))]
+names(col.map.col) <- colnames(pd.ame_res)[grepl("sample",colnames(pd.ame_res))]
 
 normalise <- function(x) (x-min(x))/(max(x)-min(x))
-pd <- apply(pd.zhang_ame[,grepl("clust",colnames(pd.zhang_ame))],2,
+pd <- apply(pd.ame_res[,grepl("sample",colnames(pd.ame_res))],2,
             normalise)
 
-pd <- pd.zhang_ame[grepl("ENSG",pd.zhang_ame$ensembl.id),
-                   grepl("clust",colnames(pd.zhang_ame))]
-pd.zhang_ame.hsap <- pd.zhang_ame[grepl("ENSG",pd.zhang_ame$ensembl.id),]
+pd <- pd.ame_res[grepl("ENSG",pd.ame_res$ensembl.id),
+                   grepl("sample",colnames(pd.ame_res))]
+pd.ame_res.hsap <- pd.ame_res[grepl("ENSG",pd.ame_res$ensembl.id),]
 
 pd.scale <- scale(pd)
 require(heatmaply)
 require(RColorBrewer)
 pd.2 <-apply(pd,2,normalise) %>% 
   as.data.frame %>%
-  arrange(clust_1,clust_2,clust_3,clust_4,clust_5,clust_6,clust_7,clust_8,clust_9,clust_10,clust_11,clust_12,clust_13,clust_14,clust_15)
+  arrange(sample_1,sample_2,sample_3,sample_4,sample_5,sample_6,sample_7,sample_8,sample_9,sample_10,sample_11,sample_12,sample_13,sample_14,sample_15)
 rownames(pd.2)<- rownames(pd)
 heatmaply(apply(pd,2,normalise),
           seriate="mean",
           scale = "none",  
           colors=rev(brewer.pal(11,"RdYlBu")),
           k_col = 5,k_row = 15,
-          RowSideColors = pd.zhang_ame[grepl("ENSG",pd.zhang_ame$ensembl.id),
+          RowSideColors = pd.ame_res[grepl("ENSG",pd.ame_res$ensembl.id),
                                        c("subfamily","family")],
           row_side_colors = brewer.pal(9,"Set1"),
           #ColSideColors = col.max.col,
@@ -117,23 +231,23 @@ heatmaply(as.matrix(pd.2),Rowv = NULL,scale = 'none',margins = c(80,0,NA,0),
 saveRDS(list(pd.chu_ame=pd.chu_ame,
              pd.chu_ame.hsap=pd.chu_ame.hsap,
              pd.chu_ame.mmus=pd.chu_ame.mmus,
-             pd.zhang_ame=pd.zhang_ame),file = './data/ame.res.rds')
+             pd.ame_res=pd.ame_res),file = './data/ame.res.rds')
 
 
 
 
 
 # TOP5 TFs  ----------------------------------------------
-pd.zhang_ame.top5<- pd.zhang_ame.hsap%>% 
+pd.ame_res.top5<- pd.ame_res.hsap%>% 
   as.tibble()%>% 
-  gather(key="clust",value = "log10_padj",1:15)%>%
-  group_by(clust)%>%
-  top_n(5,log10_padj)%>%
-  spread(clust,log10_padj)
+  gather(key="sample",value = "log10_adj_p.value",1:15)%>%
+  group_by(sample)%>%
+  top_n(5,log10_adj_p.value)%>%
+  spread(sample,log10_adj_p.value)
 
 # print
-pd.zhang_ame.top5<-pd.zhang_ame.top5[,c(colnames(pd.zhang_ame.top5)[1:7],paste0("clust_",1:15))]%>% 
-  arrange(clust_1,clust_2,clust_3,clust_4,clust_5,clust_6,clust_7,clust_8,clust_9,clust_10,clust_11,clust_12,clust_13,clust_14,clust_15)%>%
+pd.ame_res.top5<-pd.ame_res.top5[,c(colnames(pd.ame_res.top5)[1:7],paste0("sample_",1:15))]%>% 
+  arrange(sample_1,sample_2,sample_3,sample_4,sample_5,sample_6,sample_7,sample_8,sample_9,sample_10,sample_11,sample_12,sample_13,sample_14,sample_15)%>%
   print(n=28)
 
 
@@ -142,9 +256,9 @@ require(biomaRt)
 human<-  useEnsembl(biomart="ensembl", dataset="hsapiens_gene_ensembl")
 name.dic <- getBM(attributes =c("ensembl_gene_id", "external_gene_name"),
       filters = "ensembl_gene_id",
-      pd.zhang_ame.top5$ensembl.id,
+      pd.ame_res.top5$ensembl.id,
       mart = human)
-pd.zhang_ame.top5<- right_join(name.dic,pd.zhang_ame.top5,by=c("ensembl_gene_id"="ensembl.id"))
+pd.ame_res.top5<- right_join(name.dic,pd.ame_res.top5,by=c("ensembl_gene_id"="ensembl.id"))
 
 
 # Gene expression connection ----------------------------------------------
@@ -163,33 +277,33 @@ getExp <-  function(gg){
              metadata.samples,Gene=gg)%>%dplyr::select(id,TPM)%>%spread(key = id,value = TPM)
 }
 
-exp.dat <- sapply(pd.zhang_ame.top5$external_gene_name,
+exp.dat <- sapply(pd.ame_res.top5$external_gene_name,
                   getExp,simplify = F)
 all.equal(names(exp.dat),
-          pd.zhang_ame.top5$external_gene_name)
+          pd.ame_res.top5$external_gene_name)
 exp.dat<-do.call(rbind,exp.dat)
 exp.dat <- exp.dat[,c(9:10,1:8,11:18)]
-pd.zhang_ame.top5<- right_join(pd.zhang_ame.top5,exp.dat%>%
+pd.ame_res.top5<- right_join(pd.ame_res.top5,exp.dat%>%
                                  rownames_to_column("external_gene_name"))
 
 # save 
-write.csv(pd.zhang_ame.top5,file = "./data/zhang_top5_enrich_motif.csv")
+write.csv(pd.ame_res.top5,file = "./data/zhang_top5_enrich_motif.csv")
 
 # heatmap 
 
-p1 <- ggplot(pd.zhang_ame.top5%>% 
+p1 <- ggplot(pd.ame_res.top5%>% 
   unite(gene,external_gene_name,subfamily)%>%
-  dplyr::select("gene",starts_with("clust"))%>%
+  dplyr::select("gene",starts_with("sample"))%>%
     mutate(gene=factor(gene,levels = gene)) %>%
-  gather("clust","log10_padj",2:16)%>%
-  mutate(clust=factor(clust,levels = paste0("clust_",1:15))),
-  aes(clust,gene,fill=log10_padj))%+% geom_tile()%+%
+  gather("sample","log10_adj_p.value",2:16)%>%
+  mutate(sample=factor(sample,levels = paste0("sample_",1:15))),
+  aes(sample,gene,fill=log10_adj_p.value))%+% geom_tile()%+%
   scale_fill_gradientn(colours =rev(brewer.pal(7,"YlGnBu")),na.value="NA")+
   theme(plot.background=element_blank(),
         axis.text=element_text(face="bold"),
         panel.grid = element_line(colour = "black"))+
   theme_bw()
-  ggplot(pd.zhang_ame.top5%>% 
+  ggplot(pd.ame_res.top5%>% 
                  unite(gene,external_gene_name,subfamily)%>%
                  dplyr::select("gene",
                                starts_with("Me"),
@@ -208,35 +322,35 @@ p1 <- ggplot(pd.zhang_ame.top5%>%
   
 # heatmap expression  
 
-pd <- pd.zhang_ame.top5%>% 
+pd <- pd.ame_res.top5%>% 
   unite(gene,external_gene_name,subfamily)%>%
-  dplyr::select("gene",starts_with("clust"))%>%
+  dplyr::select("gene",starts_with("sample"))%>%
   column_to_rownames("gene")
 b <- simplot(pd)
 
 
-pd.2.dup <-right_join(pd.zhang_ame.top5[,1:2],
-           pd.zhang_ame.hsap%>% 
-             filter(ensembl.id %in% pd.zhang_ame.top5$ensembl_gene_id),
+pd.2.dup <-right_join(pd.ame_res.top5[,1:2],
+           pd.ame_res.hsap%>% 
+             filter(ensembl.id %in% pd.ame_res.top5$ensembl_gene_id),
            by=c('ensembl_gene_id'="ensembl.id"))%>%
   unite(gene,external_gene_name,subfamily)%>%
   filter(duplicated(gene))
 pd.2.dup <- pd.2.dup[c()]
-pd.2 <- right_join(pd.zhang_ame.top5[,1:2],
-                   pd.zhang_ame.hsap%>% 
-  filter(ensembl.id %in% pd.zhang_ame.top5$ensembl_gene_id),
+pd.2 <- right_join(pd.ame_res.top5[,1:2],
+                   pd.ame_res.hsap%>% 
+  filter(ensembl.id %in% pd.ame_res.top5$ensembl_gene_id),
   by=c('ensembl_gene_id'="ensembl.id"))%>%
   unite(gene,external_gene_name,subfamily)%>%
   filter(!duplicated(gene))%>%
-  dplyr::select("gene",starts_with("clust"))%>%
+  dplyr::select("gene",starts_with("sample"))%>%
   column_to_rownames("gene")
 
 pd.2[pd.2.dup$gene[5],1:15] <-pd.2.dup[5,3:17]
-pd.2 <- pd.2[rownames(pd),paste0("clust_",1:15)]
+pd.2 <- pd.2[rownames(pd),paste0("sample_",1:15)]
 b.2 <- simplot(pd.2)
-b.3 <- simplot(apply(pd.2[rownames(pd),paste0("clust_",1:15)],2,normalise))
+b.3 <- simplot(apply(pd.2[rownames(pd),paste0("sample_",1:15)],2,normalise))
 
-pd <- pd.zhang_ame.top5%>% 
+pd <- pd.ame_res.top5%>% 
     unite(gene,external_gene_name,subfamily)%>%
     dplyr::select("gene",
                   starts_with("Me"),
@@ -289,26 +403,26 @@ grid.arrange(b+theme(axis.text.x = element_blank()),
 # chu ---------------------------------------------------------------------
 
 pd.chu_ame <- chu_ame%>% unite(tf,1:3)%>%
-  filter(padj<=0.00001)%>%
-  mutate(log10.padj=-log10(padj))%>%
-  dplyr::select(-padj)%>%
-  spread(key=clust,value = log10.padj,fill = 1)%>%
+  filter(adj_p.value<=0.00001)%>%
+  mutate(log10.adj_p.value=-log10(adj_p.value))%>%
+  dplyr::select(-adj_p.value)%>%
+  spread(key=sample,value = log10.adj_p.value,fill = 1)%>%
   column_to_rownames("tf")
 
 pd.chu_ame.hsap <- chu_ame%>% unite(tf,1:3)%>%
-  filter(padj<=0.00001)%>%
-  filter(grepl("hsap",clust))%>%
-  mutate(log10.padj=-log10(padj))%>%
-  dplyr::select(-padj)%>%
-  spread(key=clust,value = log10.padj,fill = 1)%>%
+  filter(adj_p.value<=0.00001)%>%
+  filter(grepl("hsap",sample))%>%
+  mutate(log10.adj_p.value=-log10(adj_p.value))%>%
+  dplyr::select(-adj_p.value)%>%
+  spread(key=sample,value = log10.adj_p.value,fill = 1)%>%
   column_to_rownames("tf")
 
 pd.chu_ame.mmus <- chu_ame%>% unite(tf,1:3)%>%
-  filter(padj<=0.00001)%>%
-  filter(!grepl("hsap",clust))%>%
-  mutate(log10.padj=-log10(padj))%>%
-  dplyr::select(-padj)%>%
-  spread(key=clust,value = log10.padj,fill = 1)%>%
+  filter(adj_p.value<=0.00001)%>%
+  filter(!grepl("hsap",sample))%>%
+  mutate(log10.adj_p.value=-log10(adj_p.value))%>%
+  dplyr::select(-adj_p.value)%>%
+  spread(key=sample,value = log10.adj_p.value,fill = 1)%>%
   column_to_rownames("tf")
 
 
@@ -330,5 +444,5 @@ d3heatmap(log2(pd.chu_ame.hsap),
           colors=rev(brewer.pal(11,"RdYlBu")),k_col = 15,k_row = 5)
 d3heatmap(log2(pd.chu_ame.mmus),
           colors=rev(brewer.pal(11,"RdYlBu")),k_col = 15,k_row = 5)
-d3heatmap(log2(pd.zhang_ame),
+d3heatmap(log2(pd.ame_res),
           colors=rev(brewer.pal(11,"RdYlBu")),k_col = 15,k_row = 5)

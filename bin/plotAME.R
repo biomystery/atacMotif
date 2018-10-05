@@ -67,7 +67,9 @@ unique(ame_res$motif_ID) [!unique(ame_res$motif_ID) %in% tmp$jaspar.id]
 pd.ame_res <- ame_res%>%
   filter(adj_p.value<=th)
 pd.ame_res<-cbind(pd.ame_res,tmp[pd.ame_res$motif_ID,-1])%>%
-  unite(tf,1:3)%>%
+  #unite(tf,1:2)%>%
+  mutate(tf=motif_alt_ID)%>%
+  mutate(subfamily.name=ifelse(is.na(subfamily.name),as.character(family.name),subfamily.name))%>%
   unite(family,family.id,family.name)%>%
   unite(subfamily,subfamily.id,subfamily.name)%>%
   mutate(p.value=-log10(p.value),
@@ -96,26 +98,30 @@ ggplot(pd.ame_res%>%filter(log2FE>1),aes(sample,tf))+
   #+scale_fill_gradientn(colours =  wes_palette("Zissou1", 21, type = "continuous"))
 
 
+# thresholding ------------------------------------------------------------
 pd <- pd.ame_res%>%
   filter(log2FE>1)%>%
+  filter(adj_p.value > 10)%>%
   dplyr::select(sample,tf,log2FE)%>%
   spread(key=sample,value = log2FE)%>%
   column_to_rownames("tf")
 
-
-# hcluster
 pd.2 <- pd; pd.2[is.na(pd)]<-0
+
+# hcluster ----------------------------------------------------------------
 require(cluster)
 distfunc <- function(x) daisy(x,metric="gower")
 d <- distfunc(pd.2)
 dend <- as.dendrogram(hclust(d))
 dend <- as.dendrogram(hclust(dist(pd.2)))
 plot(dend)
-pheatmap(pd[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
-         color = colorRampPalette(brewer.pal(9,"Blues"))(11),
+pheatmap(pd[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21),
          show_rownames = F)
 
 
+
+# ranking -----------------------------------------------------------------
 # order by column
 rord <- pd %>% 
   rownames_to_column("tf")%>%
@@ -126,11 +132,74 @@ rord <- pd %>%
           desc(exocrine),desc(gamma),
           desc(glial),desc(immune),desc(stellate))
 
-pheatmap(pd[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
-         color = colorRampPalette(brewer.pal(9,"GnBu"))(11),
-         show_rownames = F)
+pheatmap(pd[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],
+         show_rownames = F,fontsize_row = 6)
 
-# row-wise scale 
+require(heatmaply)
+heatmaply(pd[rord$tf,],scale="none",
+             Rowv = NULL,Colv = NULL,
+             colors = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21])
+
+# customized ranking ------------------------------------------------------------------
+custRank_all <- function(input.pd=pd.2,na.val=0){
+  custRank <- function(pd.2,v="alpha_1"){
+    y <- pd.2[,v] 
+    idx.nna <- which(y!=na.val); idx.na <- which(y==na.val)
+    idx.idx <- order(apply(pd.2[idx.nna,],1,mean),decreasing = T)  
+    res.list <- list()
+    res.list$ordered <- pd.2[idx.nna[idx.idx],]
+    res.list$un_ordered <- pd.2[idx.na,]
+    res.list
+  }
+  
+  tmp.pd <- input.pd;final.pd <- input.pd[-(1:nrow(input.pd)),]
+  for(x in colnames(input.pd)){
+    tmp.res <- custRank(pd.2 = tmp.pd,v=x)  
+    tmp.pd <- tmp.res$un_ordered
+    final.pd<- rbind(final.pd,tmp.res$ordered)
+  }
+  final.pd[-1,]
+}
+
+final.pd <- custRank_all()
+pheatmap(pd[rownames(final.pd),],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],
+         show_rownames = F,fontsize_row = 6)
+
+# digital customized ranking ----------------------------------------------
+bks <- seq(min(pd, na.rm = T), max(pd,na.rm = T), length.out = 15 + 1)
+mat = as.matrix(pd)
+pd.3 <- matrix(as.numeric(cut(as.vector(mat), breaks = bks, include.lowest = T)),
+               nrow(mat), ncol(mat), dimnames = list(rownames(mat), colnames(mat)))
+pd.3[is.na(pd.3)]<- 0
+final.pd <- custRank_all(input.pd = pd.3)
+
+pheatmap(pd[rownames(final.pd),],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],
+         show_rownames = F,fontsize_row = 6)
+
+# kmeans ----------------------------------------------
+getClusts <- function(pd.2,...){
+  require(NbClust)
+  nb <- NbClust(pd.2,method="complete",...)
+  require(factoextra)
+  fviz_nbclust(nb) + theme_minimal()
+  ords <-(sapply(1:max(nb$Best.partition), function(x) which(nb$Best.partition==x)))
+  brks <- cumsum(lapply(ords, length))
+  ords <- unlist(ords)
+  list(ords=ords,brks=brks)  
+}
+
+pheatmap(pd[ords,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],gaps_row = brks,
+         show_rownames = F,fontsize_row = 6)
+
+heatmaply(pd[ords,],scale="none",
+          Rowv = NULL,Colv = NULL,gaps_row=brks,
+          colors = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21])
+
+# row-wise scale  ---------------------------------------------------------
 pd.3 <- t(scale(t(pd.2)))
 pd.3[pd.3>1.96] <- 1.96; pd.3[pd.3 < -1.96] <- -1.96
 d <- distfunc(pd.3)
@@ -144,9 +213,10 @@ pheatmap(pd.3[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_c
 pd.3[is.na(pd)]<- -1.96
 
 
-## by supfamily 
+# plot by supfamily  ------------------------------------------------------
 pd.sub <- pd.ame_res%>%
-  filter(log2FE>1)%>%
+  filter(log2FE>0)%>%
+  filter(adj_p.value > 10)%>%
   dplyr::select(sample,subfamily,log2FE)%>%
   group_by(sample,subfamily)%>%
   summarise(mlog2FE=max(log2FE))%>%
@@ -154,6 +224,7 @@ pd.sub <- pd.ame_res%>%
   as.data.frame()%>%
   column_to_rownames("subfamily")
 
+# hclust
 pd.sub <- pd.sub[apply(pd.sub, 1, function(x) sum(is.na(x))<ncol(pd.sub)),]
 pd.sub.2 <- pd.sub;pd.sub.2[is.na(pd.sub.2)] <- 0   
 dend <- as.dendrogram(hclust(dist(pd.sub.2)))
@@ -161,9 +232,24 @@ pheatmap(pd.sub[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster
          color = colorRampPalette(brewer.pal(9,"GnBu"))(11),
          show_rownames = T,fontsize_row = 6)
 
-## by family 
+
+# nbClust
+ords <- getClusts(pd.sub.2,min.nc=5)
+pheatmap(pd.sub[ords$ords,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],gaps_row = ords$brks,
+         show_rownames = F,fontsize_row = 6)
+
+# cust
+final.pd <- custRank_all(input.pd = pd.sub.2)
+
+heatmaply(pd.sub[rownames(final.pd),],scale="none",
+          Rowv = NULL,Colv = NULL,gaps_row=brks,
+          colors = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21])
+
+# by family  -----------------------------------------------------------
 pd.fa <- pd.ame_res%>%
   filter(log2FE>1)%>%
+  filter(adj_p.value > 10)%>%
   dplyr::select(sample,family,log2FE)%>%
   group_by(sample,family)%>%
   summarise(mlog2FE=max(log2FE))%>%
@@ -177,10 +263,15 @@ dend <- as.dendrogram(hclust(dist(pd.fa.2)))
 pheatmap(pd.fa[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
          color = colorRampPalette(brewer.pal(9,"GnBu"))(11),
          show_rownames = T,fontsize_row = 8)
+na.value <- -ncol(pd.fa)
+pd.fa.2 <- pd.fa;pd.fa.2[is.na(pd.fa)] <- na.value
+final.pd <- custRank_all(input.pd = pd.fa.2,na.val = na.value)
+final.pd <- final.pd[-grep("NA",rownames(final.pd)),]
+heatmaply(pd.fa[rownames(final.pd),],scale="none",
+          Rowv = NULL,Colv = NULL,gaps_row=brks,
+          colors = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21])
+
 # choose a quantity to plot  -------------------------------------------------------------------
-
-
-
 col.max <- apply(pd.ame_res[,grepl("sample",colnames(pd.ame_res))],
                  2,max)
 col.max.col <- cut(col.max,seq(min(col.max)-.01,max(col.max)+.01,length.out = 20))

@@ -16,6 +16,8 @@ require(TFBSTools)
 require(JASPAR2018)
 require(rvest)
 require(magrittr)
+require(pheatmap)
+require(heatmaply)
 
 col.map <- c("AEC"="darkgoldenrod","VEC"="dodgerblue","Mesoderm"="gray80")
 

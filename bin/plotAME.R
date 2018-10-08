@@ -100,7 +100,7 @@ ggplot(pd.ame_res%>%filter(log2FE>1),aes(sample,tf))+
 
 # thresholding ------------------------------------------------------------
 pd <- pd.ame_res%>%
-  filter(log2FE>1)%>%
+  filter(log2FE>0)%>%
   filter(adj_p.value > 10)%>%
   dplyr::select(sample,tf,log2FE)%>%
   spread(key=sample,value = log2FE)%>%
@@ -162,7 +162,8 @@ custRank_all <- function(input.pd=pd.2,na.val=0){
   final.pd[-1,]
 }
 
-final.pd <- custRank_all()
+pd.3 <- pd; pd.3[is.na(pd)]<- na.value
+final.pd <- custRank_all(input.pd = pd.3,na.val = na.value)
 pheatmap(pd[rownames(final.pd),],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
          color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],
          show_rownames = F,fontsize_row = 6)
@@ -191,29 +192,35 @@ getClusts <- function(pd.2,...){
   list(ords=ords,brks=brks)  
 }
 
-pheatmap(pd[ords,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
-         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],gaps_row = brks,
+res <- getClusts(pd.2=pd.2,min.nc=10)
+pheatmap(pd[res$ords,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],gaps_row = res$brks,
          show_rownames = F,fontsize_row = 6)
 
-heatmaply(pd[ords,],scale="none",
+heatmaply(pd[res$ords,],scale="none",
           Rowv = NULL,Colv = NULL,gaps_row=brks,
           colors = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21])
 
 # row-wise scale  ---------------------------------------------------------
 pd.3 <- t(scale(t(pd.2)))
 pd.3[pd.3>1.96] <- 1.96; pd.3[pd.3 < -1.96] <- -1.96
-d <- distfunc(pd.3)
-dend <- as.dendrogram(hclust(d))
 
-pd.3[is.na(pd)]<- NA
-pheatmap(pd.3[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
-         show_rownames = F,color = colorRampPalette(rev(brewer.pal(n = 7, name =
-                                                                     "RdYlBu")))(21))
+res <- getClusts(pd.2=pd.3,min.nc=10)
+
+pheatmap(pd.3[res$ords,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(rev(brewer.pal(n = 7, name =
+                                                   "RdYlBu")))(21),gaps_row = res$brks,
+         show_rownames = F,fontsize_row = 6)
+
+heatmaply(pd.3[res$ords,],scale="none",
+          Rowv = NULL,Colv = NULL,gaps_row=pd.3$brks,
+          colors = colorRampPalette(rev(brewer.pal(n = 7, name =
+                                                     "RdYlBu")))(21))
 
 pd.3[is.na(pd)]<- -1.96
 
 
-# plot by supfamily  ------------------------------------------------------
+# by supfamily  ------------------------------------------------------
 pd.sub <- pd.ame_res%>%
   filter(log2FE>0)%>%
   filter(adj_p.value > 10)%>%
@@ -237,10 +244,13 @@ pheatmap(pd.sub[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster
 ords <- getClusts(pd.sub.2,min.nc=5)
 pheatmap(pd.sub[ords$ords,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
          color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],gaps_row = ords$brks,
-         show_rownames = F,fontsize_row = 6)
+         show_rownames = T,fontsize_row = 6)
 
 # cust
 final.pd <- custRank_all(input.pd = pd.sub.2)
+pheatmap(pd.sub[rownames(final.pd),],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],
+         show_rownames = T,fontsize_row = 5,fontsize_col = 6)
 
 heatmaply(pd.sub[rownames(final.pd),],scale="none",
           Rowv = NULL,Colv = NULL,gaps_row=brks,
@@ -248,7 +258,7 @@ heatmaply(pd.sub[rownames(final.pd),],scale="none",
 
 # by family  -----------------------------------------------------------
 pd.fa <- pd.ame_res%>%
-  filter(log2FE>1)%>%
+  filter(log2FE>0)%>%
   filter(adj_p.value > 10)%>%
   dplyr::select(sample,family,log2FE)%>%
   group_by(sample,family)%>%
@@ -263,6 +273,7 @@ dend <- as.dendrogram(hclust(dist(pd.fa.2)))
 pheatmap(pd.fa[order.dendrogram(dend),],scale = "none",cluster_rows = F,cluster_cols = T,na_col = "grey",
          color = colorRampPalette(brewer.pal(9,"GnBu"))(11),
          show_rownames = T,fontsize_row = 8)
+
 na.value <- -ncol(pd.fa)
 pd.fa.2 <- pd.fa;pd.fa.2[is.na(pd.fa)] <- na.value
 final.pd <- custRank_all(input.pd = pd.fa.2,na.val = na.value)
@@ -270,63 +281,57 @@ final.pd <- final.pd[-grep("NA",rownames(final.pd)),]
 heatmaply(pd.fa[rownames(final.pd),],scale="none",
           Rowv = NULL,Colv = NULL,gaps_row=brks,
           colors = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21])
+pheatmap(pd.fa[rownames(final.pd),],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],
+         show_rownames = T,fontsize_row = 6)
 
-# choose a quantity to plot  -------------------------------------------------------------------
-col.max <- apply(pd.ame_res[,grepl("sample",colnames(pd.ame_res))],
-                 2,max)
-col.max.col <- cut(col.max,seq(min(col.max)-.01,max(col.max)+.01,length.out = 20))
-col.map <- colorRampPalette(brewer.pal(9,"Blues"))(19)
-names(col.map)<- levels(col.max.col)
-col.map.col <- col.map[col.max.col]
-names(col.map.col) <- colnames(pd.ame_res)[grepl("sample",colnames(pd.ame_res))]
+# save data  -------------------------------------------------------------------
+# promoter reads cnt 
+promoter <- read.table('./test/Islet_123.promoter_peak_counts.txt',header = T,row.names = 1)
+apply(promoter, 2, sum)
+calCpm <- function(x) x/sum(x)*100000
+promoter.cpm <- apply(promoter[,-1], 2,calCpm)
+require(reshape)
+long = melt(promoter, id.vars= "celltypes")
+ggplot(long, aes (value)) +
+  geom_density(aes(color = X2))
+plot(density(promoter[,"glial"]))
 
-normalise <- function(x) (x-min(x))/(max(x)-min(x))
-pd <- apply(pd.ame_res[,grepl("sample",colnames(pd.ame_res))],2,
-            normalise)
+# add ensemble id 
+# ensemble -> gene symbol 
+require(biomaRt)
+human<-  useEnsembl(biomart="ensembl", dataset="hsapiens_gene_ensembl")
+name.dic <- getBM(attributes =c("ensembl_gene_id", "external_gene_name"),
+                  filters = "external_gene_name",
+                  rownames(promoter.cpm),
+                  mart = human)
 
-pd <- pd.ame_res[grepl("ENSG",pd.ame_res$ensembl.id),
-                   grepl("sample",colnames(pd.ame_res))]
-pd.ame_res.hsap <- pd.ame_res[grepl("ENSG",pd.ame_res$ensembl.id),]
+promoter.cpm.2<- right_join(name.dic,promoter.cpm%>%as.data.frame()%>%rownames_to_column("external_gene_name"))
+idx <- (promoter.cpm.2$ensembl_gene_id%in% dat$tfclass$ensembl.id[!is.na(dat$tfclass$ensembl.id)] | 
+          promoter.cpm.2$external_gene_name %in% as.character(dat$tfclass$tf.symbol)[!is.na(as.character(dat$tfclass$tf.symbol))])
+promoter.cpm.2 <- promoter.cpm.2[idx,]
 
-pd.scale <- scale(pd)
-require(heatmaply)
-require(RColorBrewer)
-pd.2 <-apply(pd,2,normalise) %>% 
-  as.data.frame %>%
-  arrange(sample_1,sample_2,sample_3,sample_4,sample_5,sample_6,sample_7,sample_8,sample_9,sample_10,sample_11,sample_12,sample_13,sample_14,sample_15)
-rownames(pd.2)<- rownames(pd)
-heatmaply(apply(pd,2,normalise),
-          seriate="mean",
-          scale = "none",  
-          colors=rev(brewer.pal(11,"RdYlBu")),
-          k_col = 5,k_row = 15,
-          RowSideColors = pd.ame_res[grepl("ENSG",pd.ame_res$ensembl.id),
-                                       c("subfamily","family")],
-          row_side_colors = brewer.pal(9,"Set1"),
-          #ColSideColors = col.max.col,
-          #col_side_palette = (col.map.col),
-          column_text_angle = 90,
-          key.title = "enrichment",margins = c(80,0,0,0)
-          ) %>% layout(width=500,height=800)
-pd.dist <- as.matrix(dist(t(apply(pd,2,normalise)),diag=T,upper=T))
-pd.dist <-1- (pd.dist-min(pd.dist))/(max(pd.dist)-min(pd.dist))
-heatmaply(as.matrix(pd.2),Rowv = NULL,scale = 'none',margins = c(80,0,NA,0),
-          colors=rev(brewer.pal(11,"RdYlBu")))
+tmp <- right_join(promoter.cpm.2,dat$tfclass,by=c("ensembl_gene_id"="ensembl.id"),)
+tmp <- tmp[!is.na(tmp$external_gene_name),]
 
 
+dat <- list()
+dat$motif <- pd.ame_res
+dat$tfclass <- dic$merged
+dat$promoter.cpm <- promoter.cpm.2
 
+saveRDS(dat,file = "appDat.rds")
 
+# export csv 
 
+pd.tmp <- pd.ame_res%>%
+  filter(log2FE>0)%>%
+  filter(adj_p.value > 10)%>%
+  dplyr::select(sample,motif_ID,motif_alt_ID,ensembl.id,subfamily,family,log2FE)%>%
+  spread(key=sample,value = log2FE)
 
-
-saveRDS(list(pd.chu_ame=pd.chu_ame,
-             pd.chu_ame.hsap=pd.chu_ame.hsap,
-             pd.chu_ame.mmus=pd.chu_ame.mmus,
-             pd.ame_res=pd.ame_res),file = './data/ame.res.rds')
-
-
-
-
+write.csv(pd.tmp,"log2FE_res.csv",quote = F)
+write.csv(tmp,"")
 
 # TOP5 TFs  ----------------------------------------------
 pd.ame_res.top5<- pd.ame_res.hsap%>% 
@@ -491,49 +496,3 @@ grid.arrange(b+theme(axis.text.x = element_blank()),
              c+theme(axis.text = element_blank()),ncol=3)
 
 
-# chu ---------------------------------------------------------------------
-
-pd.chu_ame <- chu_ame%>% unite(tf,1:3)%>%
-  filter(adj_p.value<=0.00001)%>%
-  mutate(log10.adj_p.value=-log10(adj_p.value))%>%
-  dplyr::select(-adj_p.value)%>%
-  spread(key=sample,value = log10.adj_p.value,fill = 1)%>%
-  column_to_rownames("tf")
-
-pd.chu_ame.hsap <- chu_ame%>% unite(tf,1:3)%>%
-  filter(adj_p.value<=0.00001)%>%
-  filter(grepl("hsap",sample))%>%
-  mutate(log10.adj_p.value=-log10(adj_p.value))%>%
-  dplyr::select(-adj_p.value)%>%
-  spread(key=sample,value = log10.adj_p.value,fill = 1)%>%
-  column_to_rownames("tf")
-
-pd.chu_ame.mmus <- chu_ame%>% unite(tf,1:3)%>%
-  filter(adj_p.value<=0.00001)%>%
-  filter(!grepl("hsap",sample))%>%
-  mutate(log10.adj_p.value=-log10(adj_p.value))%>%
-  dplyr::select(-adj_p.value)%>%
-  spread(key=sample,value = log10.adj_p.value,fill = 1)%>%
-  column_to_rownames("tf")
-
-
-require(d3heatmap)
-require(heatmaply)
-
-heatmaply(apply(pd.chu_ame,2,normalise),
-          seriate="mean",
-          scale = "none",  
-          colors=rev(brewer.pal(11,"RdYlBu")),
-          k_col = 5,k_row = 15,column_text_angle = 90,
-          key.title = "enrichment",margins = c(80,0,NA,0)
-) %>% layout(width=600,height=1200)
-
-d3heatmap(apply(pd.chu_ame,2,normalise),
-          colors=rev(brewer.pal(11,"RdYlBu")),k_col = 15,k_row = 5)
-
-d3heatmap(log2(pd.chu_ame.hsap),
-          colors=rev(brewer.pal(11,"RdYlBu")),k_col = 15,k_row = 5)
-d3heatmap(log2(pd.chu_ame.mmus),
-          colors=rev(brewer.pal(11,"RdYlBu")),k_col = 15,k_row = 5)
-d3heatmap(log2(pd.ame_res),
-          colors=rev(brewer.pal(11,"RdYlBu")),k_col = 15,k_row = 5)

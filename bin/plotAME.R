@@ -1,6 +1,6 @@
 
 source("./bin/aux_funs.R")
-tfclass <- readRDS("./data/tfclass.rds")
+tfclass <- readRDS("./db/tfclass.rds")
 
 
 # input parameters --------------------------------------------------------

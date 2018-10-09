@@ -1,0 +1,25 @@
+"","TF","cellType","ensembl_gene_id","jaspar.id","jaspar.name","genus.id","genus.name","tf.symbol","subfamily.id","subfamily.name","subfamily.seq","family.id","family.name","alpha_1","alpha_2","beta_1","beta_2","delta_1","delta_2","endothelial_1","endothelial_2","exocrine","gamma","glial","immune","stellate"
+"1","MAFA","Beta.cells","ENSG00000182759",NA,NA,"1.1.3.1.2","MAFA","MAFA","1.1.3.1","Large MAF","TGCTGACTCAGCA","1.1.3","Maf-related",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"2","MAFB","Alpha.cells;Beta.cells","ENSG00000204103",NA,NA,"1.1.3.1.3","MAFB","MAFB","1.1.3.1","Large MAF","TGCTGACTCAGCA","1.1.3","Maf-related",68.36,13.92,49.73,30.56,NA,NA,NA,NA,NA,NA,NA,2.91,NA
+"3","PTF1A","Acinar.cells","ENSG00000168267",NA,NA,"1.2.3.2.7","PTF1A","PTF1a","1.2.3.2","TWIST","CGTCTG","1.2.3","Tal-related",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"4","NEUROD1","Beta.cells","ENSG00000162992","MA1109.1","NEUROD1","1.2.3.4.1","NEUROD1","NEUROD1","1.2.3.4","Neurogenin-ATO","CAGCTG","1.2.3","Tal-related",79.44,NA,155.93,23.53,42.69,NA,NA,NA,NA,2.52,NA,NA,9.59
+"5","MNX1","Beta.cells","ENSG00000130675","MA0707.1","MNX1","3.1.1.13.1","MNX1","MNX1","3.1.1.13","MNX","ACTAATTA","3.1.1","HOX",3.71,16.46,23.22,89.05,65.5,30.75,NA,NA,NA,5.59,NA,NA,NA
+"6","PDX1","Beta.cells;Delta.cells","ENSG00000139515","MA0132.2","PDX1","3.1.1.15.1","PDX1","PDX1","3.1.1.15","PDX","TAATTA","3.1.1","HOX",NA,12.92,48.78,79.72,99.57,19.33,NA,NA,NA,4.92,NA,NA,NA
+"7","POU3F1","Delta.cells","ENSG00000185668","MA0786.1","POU3F1","3.1.10.3.1","POU3F1 (Oct-6)","POU3F1","3.1.10.3","POU3","TAATTAATTA","3.1.10","POU",29.76,50.05,3.3,36.9,8.15,29.1,NA,5.12,4.94,5.24,NA,2.74,NA
+"8","NKX2-2","Beta.cells","ENSG00000125820",NA,NA,"3.1.2.15.1","NKX2-2","NKX2-2","3.1.2.15","NK2.2","CCACTTGA","3.1.2","NK",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"9","NKX2-3","Endothelial","ENSG00000119919","MA0672.1","NKX2-3","3.1.2.17.1","NKX2-3","NKX2-3","3.1.2.17","NK4","CCACTTAA","3.1.2","NK",2.8,NA,2.95,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"10","NKX6-1","Beta.cells","ENSG00000163623","MA0674.1","NKX6-1","3.1.2.19.1","NKX6-1 (NKX6-1-1, NKX6-1-2)","NKX6-1","3.1.2.19","NK6","AATAATTA","3.1.2","NK",7.18,17.82,34.27,86.91,72.32,22.62,NA,NA,NA,6.06,NA,NA,NA
+"11","HHEX","Delta.cells","ENSG00000152804",NA,NA,"3.1.2.8.1","HHEX","HHEX","3.1.2.8","HHEX","ATTAA","3.1.2","NK",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"12","ARX","Alpha.cells;Gamma.cells","ENSG00000004848",NA,NA,"3.1.3.3.1","ARX","ARX","3.1.3.3","ARX","TTAATTAAA","3.1.3","Paired-related HD",NA,NA,1.82,11.55,5.8,NA,NA,NA,NA,NA,NA,NA,NA
+"13","IRX2","Alpha.cells","ENSG00000170561",NA,NA,"3.1.4.1.2","IRX2","IRX2","3.1.4.1","IRX","TACATGTA","3.1.4","TALE-type HD",1.95,11.06,NA,14.27,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"14","ISL1","Alpha.cells;Beta.cells;Delta.cells","ENSG00000016082",NA,NA,"3.1.5.1.1","ISL1","ISL1","3.1.5.1","ISL","ATCAATTAA","3.1.5","HD-LIM",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"15","SIX2","Beta.cells","ENSG00000170577","MA1119.1","SIX2","3.1.6.1.2","SIX2","SIX2","3.1.6.1","SIX1-like","GGGTATCA","3.1.6","HD-SINE",6.93,NA,4.4,9.13,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"16","SIX3","Beta.cells","ENSG00000138083",NA,NA,"3.1.6.2.1","SIX3","SIX3","3.1.6.2","SIX3-like","GGGTATCA","3.1.6","HD-SINE",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"17","PAX6","Alpha.cells;Beta.cells;Delta.cells;Gamma.cells","ENSG00000007372","MA0069.1","Pax6","3.2.1.2.2","PAX6","PAX6","3.2.1.2","PAX4-like","CTAATTAG","3.2.1","PD+HD",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"18","RFX6","Alpha.cells;Beta.cells","ENSG00000185002",NA,NA,"3.3.3.0.6","RFX6","RFX6","3.3.3.0",NA,NA,"3.3.3","RFX",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"19","ETS1","Endothelial","ENSG00000134954","MA0098.3","ETS1","3.5.2.1.1","c-Ets-1 (Ets-1)","Ets-1","3.5.2.1","ETS-like","CCGGAAG","3.5.2","Ets-related",10.17,2.19,7.27,NA,36.74,NA,Inf,67.1,8.61,31.03,29.75,68.79,52.78
+"20","FEV","Alpha.cells;Beta.cells;Gamma.cells","ENSG00000163497","MA0156.2","FEV","3.5.2.1.8","FEV","FEV","3.5.2.1","ETS-like","CCGGAAG","3.5.2","Ets-related",NA,NA,NA,NA,11.4,NA,Inf,49.95,NA,15.64,19.52,50.01,33.64
+"21","ETV1","Delta.cells;Gamma.cells","ENSG00000006468","MA0761.1","ETV1","3.5.2.2.4","ETV1","ETV1","3.5.2.2","ELK-like","CCGGAAG","3.5.2","Ets-related",NA,NA,NA,NA,9.7,NA,320.29,37.96,NA,11.89,13,39.45,30.48
+"22","SOX18","Endothelial","ENSG00000203883",NA,NA,"4.1.1.6.3","SOX18","SOX18","4.1.1.6","Group F","AACAAT","4.1.1","SOX-related",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"23","ERBB4","Delta.cells","ENSG00000178568",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"24","PSIP1","Delta.cells","ENSG00000164985",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA

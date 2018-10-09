@@ -28,7 +28,7 @@ pheatmap(pd.sub[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = F,na_co
          show_rownames = F,fontsize_row = 6)
 
 
-# sanity check list -------------------------------------------------------
+# sanity check list (clean) -------------------------------------------------------
 dic<- readRDS("./db/dic_jaspar_tfclass.rds")
 tf.check <- read.csv("./test/snATAC_check_list.csv",header = T,stringsAsFactors = F)
 tf.check <- tf.check[,-c(4,7,9)]
@@ -56,26 +56,27 @@ tf.check <- tf.check%>%
   left_join(name.dic,by = c("TF"="external_gene_name"))
 
 # find annotation 
-tf.check%>% 
-  left_join(dat$tfclass[,c(1:3,)],by=c("ensembl_gene_id"="ensembl.id"))
+tf.check<-tf.check%>% 
+  left_join(dic$merged,by=c("ensembl_gene_id"="ensembl.id"))
 
-tf.all.anno <- tf.all.anno[!is.na(tf.all.anno$external_gene_name),]
-sum(res$tfclass$ensembl.id%in% name.dic$ensembl_gene_id )
-sum(name.dic$ensembl_gene_id%in%  res$tfclass$ensembl.id)
-sum(name.dic$external_gene_name%in%  res$tfclass$genus.name)
-dup.id <- duplicated(tf.all.anno$ensembl_gene_id)
-dup.tf <- tf.all.anno[dup.id,]
-tf.all.anno <- tf.all.anno[!dup.id,]
-rownames(tf.all.anno) <- tf.all.anno$external_gene_name
+write.csv(tf.check,"./test/snATAC_check_list_anno.csv",quote = T)
+system("open ./test/snATAC_check_list_anno.csv")
 
-# for each celltype 
-res <-lapply(colnames(tf.check),function(nm){
-  cell.tfs <- tf.check[,nm]
-  cell.tfs <- cell.tfs[cell.tfs!=""]
-  cell.sfs <- tf.all.anno[cell.tfs,]
-  cell.sfs <- cell.sfs[!is.na(cell.sfs$ensembl_gene_id),]
-  cell.sfs <- cell.sfs[(paste(cell.sfs$subfamily.id,cell.sfs$subfamily.name,sep = "_") %in% rownames(pd.sub)),]
-  data.frame(round(pd.sub[paste(cell.sfs$subfamily.id,cell.sfs$subfamily.name,sep = "_"),],2),type=nm)
-})
-res <- do.call(rbind,res)
-write.csv(res,"check.csv",quote = F)
+# filter TF with no sf annotation 
+table(is.na(tf.check$subfamily.id)) #22 vs. 2 
+tf.check <- tf.check %>% filter(!is.na(subfamily.id))
+
+
+# check results  ----------------------------------------------------------
+
+tf.check.res <- left_join(tf.check,dat$motif%>%
+                            filter(genus.id %in% tf.check$genus.id[!is.na(tf.check$genus.id)])%>%
+                            dplyr::select(sample,genus.id,adj_p.value)%>%
+                            mutate(adj_p.value=round(adj_p.value,2))%>%
+                            group_by(sample,genus.id)%>%
+                            spread(key=sample,value = adj_p.value))%>%
+  arrange(genus.id)
+
+write.csv(tf.check.res,"./test/snATAC_check_list_res_padj.csv",quote = T)
+system("open ./test/snATAC_check_list_res_padj.csv")
+

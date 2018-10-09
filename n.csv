@@ -1,0 +1,14 @@
+sample,FASTA_max,nmotifs
+alpha_1,2000,324
+alpha_2,2000,333
+beta_1,2000,359
+beta_2,2000,335
+delta_1,2000,316
+delta_2,2000,237
+endothelial_1,2000,196
+endothelial_2,2000,201
+exocrine,2000,213
+gamma,2000,188
+glial,2000,167
+immune,2000,170
+stellate,2000,220

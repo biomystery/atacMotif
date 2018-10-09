@@ -5,7 +5,7 @@ tfclass <- readRDS("./db/tfclass.rds")
 
 # input parameters --------------------------------------------------------
 ame_path <- "./test/ame_2kbg_all.res.txt"
-th <- .00001
+th <- 0.1
 
 # ame’s output ------------------------------------------------------------
 ame_res <- read.table(ame_path,

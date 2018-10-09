@@ -1,5 +1,5 @@
 source("./bin/aux_funs.R")
-dat <- readRDS("appDat.rds")
+dat <- readRDS("./test/appDat.rds")
 
 
 # by supfamily  ------------------------------------------------------
@@ -30,12 +30,17 @@ pheatmap(pd.sub[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = F,na_co
 
 # sanity check list -------------------------------------------------------
 dic<- readRDS("./db/dic_jaspar_tfclass.rds")
-tf.check <- read.csv("./snATAC_check_list.csv",header = T,stringsAsFactors = F)
+tf.check <- read.csv("./test/snATAC_check_list.csv",header = T,stringsAsFactors = F)
 tf.check <- tf.check[,-c(4,7,9)]
+tf.check<-tf.check%>%
+  gather(key = "cellType",value = "TF")%>%
+  filter(TF!="")%>%
+  group_by(TF)%>%
+  summarise(cellType=paste0(cellType,collapse = ";"))
 
 # tf list 
-tf.all <- as.vector(as.matrix(tf.check,nrow=1))
-tf.all <- unique(tf.all[tf.all!=""])
+tf.all <- as.vector(as.matrix(tf.check$TF,nrow=1))
+
 
 # find ensemble id
 require(biomaRt)
@@ -44,9 +49,16 @@ name.dic <- getBM(attributes =c("ensembl_gene_id", "external_gene_name"),
                   filters = "external_gene_name",
                   tf.all,
                   mart = human)
+tf.all[!tf.all %in% name.dic$external_gene_name]
+
+# add ensemble id 
+tf.check <- tf.check%>%
+  left_join(name.dic,by = c("TF"="external_gene_name"))
 
 # find annotation 
-tf.all.anno <- name.dic%>% right_join(res$tfclass,by=c("ensembl_gene_id"="ensembl.id"))
+tf.check%>% 
+  left_join(dat$tfclass[,c(1:3,)],by=c("ensembl_gene_id"="ensembl.id"))
+
 tf.all.anno <- tf.all.anno[!is.na(tf.all.anno$external_gene_name),]
 sum(res$tfclass$ensembl.id%in% name.dic$ensembl_gene_id )
 sum(name.dic$ensembl_gene_id%in%  res$tfclass$ensembl.id)

@@ -68,7 +68,37 @@ length(unique(tmp.1$jaspar.id)) #580 (add NA)
 length(unique(tfclass$merge$subfamily.id)) #396
 length(unique(tmp.1$subfamily.id)) #397
 
-dic$merged <- tmp.1%>%
+dic$merged <- tmp.1
+
+# update 4: remove duplicated rows ----------------------------------------
+dic<- readRDS("./db/dic_jaspar_tfclass.rds")
+
+# eg
+dic$merged %>% filter(ensembl.id=="ENSG00000134954")
+red <- lapply(unique(dic$merged$ensembl.id),function(x){
+  tmp <- dic$merged %>% filter(ensembl.id==x)
+  if(nrow(tmp[,-c(1:2)]%>% distinct())<nrow(tmp)){
+    return(tmp[!is.na(tmp$jaspar.name),])
+  }else{
+    return(tmp)
+  }
+})
+x <- "ENSG00000134954"
+length(red)
+red[[2]]
+red <- do.call(rbind,red)
+head(red)
+red %>% filter(ensembl.id=="ENSG00000134954")
+
+# handle NA i.e. rescures
+# https://github.com/epigen-UCSD/atacMotif/blob/master/db/rescue_Jaspar.txt
+sum(is.na(red$ensembl.id))
+sum(is.na(unique(dic$merged$ensembl.id)))
+dim(dic$merged[is.na(dic$merged$ensembl.id),]) #20
+#write.csv(tmp,file="./db/rescue_Jaspar.csv",quote = F,row.names = F)
+tmp <- read.csv("./db/rescue_Jaspar.csv",header = T,stringsAsFactors = F)
+dic$merged <- rbind(red,tmp)
+
 
 saveRDS(dic,file = "./db/dic_jaspar_tfclass.rds")
 

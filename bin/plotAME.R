@@ -231,6 +231,24 @@ pd.sub <- pd.ame_res%>%
   as.data.frame()%>%
   column_to_rownames("subfamily")
 
+# order by level 
+rord <- pd.sub %>% 
+  rownames_to_column("tf")%>%
+  arrange(desc(alpha_1),desc(alpha_2),
+          desc(beta_1),desc(beta_2),
+          desc(delta_1),desc(delta_2),
+          desc(endothelial_1),desc(endothelial_2),
+          desc(exocrine),desc(gamma),
+          desc(glial),desc(immune),desc(stellate))
+
+pheatmap(pd.sub[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = F,na_col = "grey",
+         color = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21],
+         show_rownames = F,fontsize_row = 6)
+
+heatmaply(pd.sub[rord$tf,],scale="none",
+          Rowv = NULL,Colv = NULL,gaps_row=brks,
+          colors = colorRampPalette(brewer.pal(9,"Blues"))(21)[7:21])
+
 # hclust
 pd.sub <- pd.sub[apply(pd.sub, 1, function(x) sum(is.na(x))<ncol(pd.sub)),]
 pd.sub.2 <- pd.sub;pd.sub.2[is.na(pd.sub.2)] <- 0   

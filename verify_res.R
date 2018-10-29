@@ -4,14 +4,16 @@ dat <- readRDS("./test/appDat.rds")
 
 # by supfamily  ------------------------------------------------------
 pd.sub <- dat$motif%>%
-  #filter(log2FE>0)%>%
-  #filter(adj_p.value > 10)%>%
+  filter(log2FE>0)%>%
+  filter(adj_p.value > 10)%>%
   dplyr::select(sample,subfamily,log2FE)%>%
   group_by(sample,subfamily)%>%
   summarise(mlog2FE=max(log2FE))%>%
   spread(key=sample,value = mlog2FE)%>%
   as.data.frame()%>%
   column_to_rownames("subfamily")
+
+
 
 # order by level 
 rord <- pd.sub %>% 
@@ -28,6 +30,30 @@ pheatmap(pd.sub[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = F,na_co
          show_rownames = F,fontsize_row = 6)
 
 
+# padj --------------------------------------------------------------------
+m.filters <- dat$motif%>%
+  
+
+pd.motif<- dat$motif%>%
+  filter(!grepl('ZNF',motif_alt_ID))%>%
+  dplyr::select(sample,motif_alt_ID,log2FE)%>%
+  group_by(sample,motif_alt_ID)%>%
+  summarise(mlog_adjPval=max(log2FE))%>%
+  group_by(sample)%>%
+  mutate(mlog_adjPval=(mlog_adjPval-min(mlog_adjPval))/(max(mlog_adjPval)-min(mlog_adjPval))) %>%
+  replace_na(list(mlog_adjPval=0))%>%
+  spread(key=sample,value = mlog_adjPval,fill = 0)%>%
+  as.data.frame()%>%
+  column_to_rownames("motif_alt_ID")
+
+
+require(viridis)
+pheatmap(pd.sub[apply(pd.sub,1,max)>0.25,],scale = "none",cluster_rows = T,cluster_cols = F,na_col = "grey",
+         color = viridis(6),
+         show_rownames = T,fontsize_row = 6)
+
+write.csv(file="top10.csv",x=apply(pd.sub,2,function(x) rownames(pd.sub)[order(x,decreasing = T)[1:10]]))
+apply(pd.sub,2,function(x) rownames(pd.sub)[order(x,decreasing = T)[1:10]])
 
 # sanity check list (clean) -------------------------------------------------------
   if(T){

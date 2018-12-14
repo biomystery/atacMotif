@@ -31,9 +31,6 @@ pheatmap(pd.sub[rord$tf,],scale = "none",cluster_rows = F,cluster_cols = F,na_co
 
 
 # padj --------------------------------------------------------------------
-m.filters <- dat$motif%>%
-  
-
 pd.motif<- dat$motif%>%
   filter(!grepl('ZNF',motif_alt_ID))%>%
   dplyr::select(sample,motif_alt_ID,log2FE)%>%
@@ -48,10 +45,15 @@ pd.motif<- dat$motif%>%
 
 
 require(viridis)
-pheatmap(pd.sub[apply(pd.sub,1,max)>0.25,],scale = "none",cluster_rows = T,cluster_cols = F,na_col = "grey",
-         color = viridis(6),
-         show_rownames = T,fontsize_row = 6)
-
+if(T){
+  pdf("res.pdf",height = 10)
+  selc <- apply(pd.motif,1,max)>0.5
+  selc <- unique(as.vector(apply(pd.motif,2,function(x) order(x,decreasing = T)[1:30])))
+  pheatmap(pd.motif[selc,],scale = "none",cluster_rows = T,cluster_cols = F,na_col = "grey",
+           color = viridis(6),cellwidth = 6,fontsize_col = 6,
+           show_rownames = T,fontsize_row = 4)
+  dev.off()
+}
 write.csv(file="top10.csv",x=apply(pd.sub,2,function(x) rownames(pd.sub)[order(x,decreasing = T)[1:10]]))
 apply(pd.sub,2,function(x) rownames(pd.sub)[order(x,decreasing = T)[1:10]])
 
@@ -96,6 +98,18 @@ tf.check <- read.csv("./test/snATAC_check_list_anno.csv",header = T,stringsAsFac
 table(is.na(tf.check$subfamily.id)) #22 vs. 2 
 #tf.check <- tf.check %>% filter(!is.na(subfamily.id))
 
+require(chromVARmotifs)
+sapply(tf.check$ensembl_gene_id, function(x) grep(x,names(human_pwms_v1)))
+sapply(tf.check$TF, function(x) grep(x,names(human_pwms_v2)))
+table(sapply(tf.check$TF, function(x) length(grep(x,names(encode_pwms)))==0))
+table(sapply(tf.check$TF, function(x) length(grep(x,names(human_pwms_v1)))==0))
+table(sapply(tf.check$TF, function(x) length(grep(x,names(human_pwms_v2)))==0))
+table(sapply(tf.check$ensembl_gene_id, function(x) length(grep(x,names(human_pwms_v2)))==0))
+table(sapply(tf.check$ensembl_gene_id, function(x) length(grep(x,names(human_pwms_v1)))==0))
+
+data("human_pwms_v1") # human collection
+data("homer_pwms")
+data("encode_pwms")
 
 # check results  ----------------------------------------------------------
 
@@ -108,7 +122,7 @@ tf.check.res <- left_join(tf.check,dat$motif%>%
   arrange(genus.id)
 
 write.csv(tf.check.res,"./test/snATAC_check_list_res_padj.csv",quote = T)
-system("open ./test/snATAC_check_list_res_padj.csv")
+system("open ./test/snATAC_check_list_res_padj.xlsx")
 
 # extra check 
 dat$motif%>%

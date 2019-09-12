@@ -7,5 +7,5 @@
 *.bed*
 *DS_Store
 figs*
-
+test/*
 

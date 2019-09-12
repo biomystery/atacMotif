@@ -103,3 +103,9 @@ tfclass$merge<- (data.frame(tfclass$merge,family.name=tmp.dic[tfclass$merge$fami
 
 saveRDS(tfclass,file = "./data/tfclass.rds")
 
+
+# add superfamily and class -----------------------------------------------
+tfclass <- readRDS('./db/tfclass.rds')
+tfclass$class <- fread('./db/class.txt',col.names = c('id','name','about'))
+tfclass$superclass <- fread('./db/superclass.txt',col.names = c('id','name','about'))
+saveRDS(tfclass,file = "./db/tfclass.rds")

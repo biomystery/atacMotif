@@ -107,6 +107,6 @@ saveRDS(tfclass,file = "./data/tfclass.rds")
 # add superfamily and class -----------------------------------------------
 tfclass <- readRDS('./db/tfclass.rds')
 require(data.table)
-tfclass$class <- fread('./db/class.txt',col.names = c('id','name','about'),colClasses = rep('chr',3))
-tfclass$superclass <- fread('./db/superclass.txt',col.names = c('id','name','about'),colClasses = rep('chr',3))
+tfclass$class <- fread('./db/class.txt',col.names = c('id','name','about'),colClasses =rep('chr',3))
+tfclass$superclass <- fread('./db/superclass.txt',col.names = c('id','name','about'),colClasses =rep('chr',3))
 saveRDS(tfclass,file = "./db/tfclass.rds")
